@@ -1,0 +1,77 @@
+import os
+import time
+
+from fastapi import FastAPI, Request
+from fastapi.responses import PlainTextResponse
+from twilio.rest import Client
+
+from ai_os.ai_provider import AIProviderError, get_ai_provider
+from ai_os.kernel.kernel import run_cycle
+
+app = FastAPI()
+
+twilio_client = Client(
+    os.environ["TWILIO_SID"],
+    os.environ["TWILIO_AUTH_TOKEN"],
+)
+
+TWILIO_NUMBER = "whatsapp:+14155238886"
+
+last_user_message = {}
+last_user_call_time = {}
+conversation_memory = {}
+MAX_HISTORY = 10
+
+
+def ask_ai(user_number: str, user_msg: str):
+    now = time.time()
+
+    if last_user_message.get(user_number) == user_msg:
+        return None
+    last_user_message[user_number] = user_msg
+
+    if now - last_user_call_time.get(user_number, 0) < 6:
+        return "Easy, give me a few seconds..."
+    last_user_call_time[user_number] = now
+
+    history = conversation_memory.get(user_number, [])
+    history.append({"role": "user", "text": user_msg})
+    history = history[-MAX_HISTORY:]
+
+    messages = [
+        {
+            "role": "system",
+            "content": "You are a helpful WhatsApp assistant. Reply naturally.",
+        }
+    ]
+    for msg in history:
+        role = "assistant" if msg["role"] == "bot" else "user"
+        messages.append({"role": role, "content": msg["text"]})
+
+    try:
+        provider = get_ai_provider()
+        reply = provider.chat(messages, purpose="chat", temperature=0.3)
+        history.append({"role": "bot", "text": reply})
+        conversation_memory[user_number] = history
+        return reply
+    except AIProviderError as exc:
+        return str(exc)
+
+
+@app.post("/webhook")
+async def whatsapp_webhook(request: Request):
+    form = await request.form()
+    user_msg = form.get("Body")
+    user_number = form.get("From")
+
+    reply = run_cycle(user_msg)
+
+    if reply is None:
+        return PlainTextResponse("OK")
+
+    twilio_client.messages.create(
+        from_=TWILIO_NUMBER,
+        to=user_number,
+        body=reply,
+    )
+    return PlainTextResponse("OK")

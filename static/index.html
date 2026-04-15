@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lucky AI-OS | Thinking Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background: #050505;
+            color: #f1f5f9;
+            font-family: 'Outfit', sans-serif;
+            overflow-x: hidden;
+        }
+        
+        /* High-Intensity Diamond Grid with Spherical Mask - now in a background layer */
+        .diamond-bg {
+            position: fixed;
+            inset: 0;
+            background-image: 
+                radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.4) 1.5px, transparent 0),
+                radial-gradient(circle at 0 0, rgba(255, 255, 255, 0.4) 1.5px, transparent 0);
+            background-size: 32px 32px;
+            background-attachment: fixed;
+            -webkit-mask-image: radial-gradient(circle at center, black 30%, transparent 85%);
+            mask-image: radial-gradient(circle at center, black 30%, transparent 85%);
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .glass {
+            background: rgba(10, 10, 12, 0.85);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.07);
+        }
+        .neon-text {
+            text-shadow: 0 0 12px rgba(255, 240, 0, 0.4);
+        }
+        .neon-border {
+            box-shadow: 0 0 25px rgba(0, 0, 0, 0.5);
+            border-color: rgba(255, 240, 0, 0.15);
+        }
+        .mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .log-entry {
+            opacity: 0;
+            transform: translateY(15px);
+        }
+        .pulse {
+            animation: pulse-animation 2s infinite;
+        }
+        @keyframes pulse-animation {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.6; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #fff000; border-radius: 10px; }
+        .accent-yellow { color: #fff000; }
+        .bg-accent-yellow { background: #fff000; }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-8">
+    
+    <!-- Background Layer (Dots) -->
+    <div class="diamond-bg"></div>
+
+    <!-- Halftone Glow -->
+    <div class="fixed inset-0 pointer-events-none z-1">
+        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80vw] h-[80vh] bg-[#fff000] rounded-full blur-[200px] opacity-[0.03]"></div>
+    </div>
+
+    <div class="max-w-6xl mx-auto relative z-10">
+        <!-- Header -->
+        <header class="flex flex-col md:flex-row justify-between items-center mb-12 glass p-6 rounded-3xl neon-border">
+            <div class="flex items-center gap-5 mb-4 md:mb-0">
+                <div class="w-14 h-14 bg-[#fff000] rounded-2xl flex items-center justify-center text-black font-extrabold text-3xl shadow-[0_0_20px_rgba(255,240,0,0.3)]">J</div>
+                <div>
+                    <h1 class="text-3xl font-extrabold tracking-tighter">JARVIS <span class="accent-yellow text-sm align-top">OS</span></h1>
+                    <p class="text-gray-500 text-xs font-bold uppercase tracking-[0.2em]">Engineering Defense System</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-6">
+                <div id="statusIndicator" class="flex items-center gap-3 bg-black/50 border border-white/5 px-5 py-2.5 rounded-full shadow-inner">
+                    <span class="w-2.5 h-2.5 rounded-full bg-red-500 pulse shadow-[0_0_10px_rgba(239,68,68,0.5)]"></span>
+                    <span class="text-xs font-bold uppercase tracking-widest text-gray-500">System_Offline</span>
+                </div>
+                <div class="text-right hidden md:block">
+                    <p class="text-[10px] text-gray-600 font-bold uppercase tracking-widest leading-none">Kernel Rev</p>
+                    <p class="text-sm font-extrabold mono accent-yellow">v4.1.0-JARVIS</p>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <!-- Sidebar Stats/Status -->
+            <div class="lg:col-span-1 space-y-6">
+                <div class="glass p-8 rounded-3xl space-y-5 border-t-4 border-t-[#fff000]">
+                    <h2 class="text-xs font-black uppercase tracking-[0.3em] text-gray-600">System Vitals</h2>
+                    <div id="vitals" class="space-y-6">
+                        <div class="space-y-2">
+                            <div class="flex justify-between text-[10px] font-bold uppercase tracking-widest text-gray-500">
+                                <span>CPU_LOAD</span>
+                                <span id="cpuVal">0%</span>
+                            </div>
+                            <div class="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                                <div id="cpuBar" class="h-full bg-[#fff000] transition-all duration-500" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <div class="space-y-2">
+                            <div class="flex justify-between text-[10px] font-bold uppercase tracking-widest text-gray-500">
+                                <span>RAM_USAGE</span>
+                                <span id="ramVal">0%</span>
+                            </div>
+                            <div class="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                                <div id="ramBar" class="h-full bg-[#fff000] transition-all duration-500" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass p-8 rounded-3xl space-y-5">
+                    <h2 class="text-xs font-black uppercase tracking-[0.3em] text-gray-600">Active State</h2>
+                    <div id="statusList" class="space-y-3">
+                        <div class="flex justify-between items-center bg-white/[0.02] p-4 rounded-2xl border border-white/5 group hover:border-[#fff000]/20 transition-all">
+                            <span class="text-gray-500 text-xs font-bold uppercase">Lifecycle</span>
+                            <span id="lifecycleStatus" class="mono text-xs text-gray-400 font-bold">IDLE_STATE</span>
+                        </div>
+                        <div class="flex justify-between items-center bg-white/[0.02] p-4 rounded-2xl border border-white/5 opacity-40 group hover:opacity-100 transition-all">
+                             <span class="text-xs font-bold uppercase">Brain_Core</span>
+                             <span id="activeBrain" class="mono text-xs">—</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass p-8 rounded-3xl bg-red-500/[0.02] border border-red-500/10">
+                    <h2 class="text-xs font-black uppercase tracking-[0.3em] text-red-900/60 mb-5">Integrity Watch</h2>
+                    <div id="safetyAlerts" class="space-y-3">
+                        <p class="text-gray-700 text-[10px] font-bold uppercase tracking-widest italic">Zero Violations</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Feed -->
+            <div class="lg:col-span-2 flex flex-col h-[74vh]">
+                <div class="glass flex-1 rounded-[2.5rem] overflow-hidden flex flex-col neon-border border-white/5 shadow-2xl">
+                    <div class="bg-white/[0.02] px-8 py-5 border-b border-white/5 flex justify-between items-center">
+                        <div class="flex items-center gap-3">
+                            <div class="w-1.5 h-1.5 rounded-full bg-[#fff000] shadow-[0_0_10px_#fff000]"></div>
+                            <span class="font-black text-[10px] uppercase tracking-[0.4em] text-gray-500">Live_Stream_v4</span>
+                        </div>
+                        <button onclick="clearLogs()" class="text-[10px] font-bold text-gray-700 hover:text-[#fff000] transition-colors mono tracking-widest uppercase">/flush_logs</button>
+                    </div>
+                    
+                    <div id="logs" class="flex-1 overflow-y-auto p-10 space-y-8 mono text-xs scroll-smooth">
+                        <div class="text-gray-800 font-bold tracking-widest uppercase text-[10px]">Signal_Standby...</div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const logsContainer = document.getElementById('logs');
+        const statusIndicator = document.getElementById('statusIndicator');
+        const lifecycleStatus = document.getElementById('lifecycleStatus');
+        const activeBrain = document.getElementById('activeBrain');
+        const safetyAlerts = document.getElementById('safetyAlerts');
+        
+        // Stats Elements
+        const cpuBar = document.getElementById('cpuBar');
+        const cpuVal = document.getElementById('cpuVal');
+        const ramBar = document.getElementById('ramBar');
+        const ramVal = document.getElementById('ramVal');
+
+        // Polling for System Vitals
+        async function updateStats() {
+            try {
+                const response = await fetch('/stats');
+                const stats = await response.json();
+                
+                if (stats.cpu_percent !== undefined) {
+                    cpuBar.style.width = stats.cpu_percent + '%';
+                    cpuVal.innerText = Math.round(stats.cpu_percent) + '%';
+                    ramBar.style.width = stats.ram_percent + '%';
+                    ramVal.innerText = Math.round(stats.ram_percent) + '%';
+                }
+            } catch (err) {
+                console.error("Stats Fetch Error:", err);
+            }
+        }
+        setInterval(updateStats, 2000);
+
+        let ws;
+        function connect() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
+
+            ws.onopen = () => {
+                statusIndicator.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-[#fff000] pulse shadow-[0_0_10px_#fff000]"></span><span class="text-xs font-bold uppercase tracking-widest text-[#fff000]">System_Online</span>';
+                console.log('JARVIS: Online');
+            };
+
+            ws.onmessage = (event) => {
+                const payload = JSON.parse(event.data);
+                handleEvent(payload.event, payload.data);
+            };
+
+            ws.onclose = () => {
+                statusIndicator.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-red-500 pulse shadow-[0_0_10px_rgba(239,68,68,0.5)]"></span><span class="text-xs font-bold uppercase tracking-widest text-gray-500">System_Offline</span>';
+                console.log('Disconnected. Retrying in 3s...');
+                setTimeout(connect, 3000);
+            };
+        }
+
+        function handleEvent(event, data) {
+            console.log("EVENT:", event, data);
+            
+            let entry = document.createElement('div');
+            entry.className = "log-entry border-l-2 border-transparent pl-4";
+            
+            switch(event) {
+                case 'cycle_start':
+                    lifecycleStatus.innerText = "ACTIVE_STATE";
+                    lifecycleStatus.className = "mono text-xs text-[#fff000] font-bold";
+                    entry.innerHTML = `<span class="text-[#fff000] font-black uppercase">>>> IN_MSG:</span> <span class="text-white">"${data.message}"</span>`;
+                    entry.classList.add('border-[#fff000]');
+                    clearStats();
+                    break;
+                case 'intent_extracted':
+                    entry.innerHTML = `<span class="text-gray-500 font-bold uppercase tracking-wider">[*] INTENT_ANALYSIS:</span> <span class="text-gray-400 font-bold">${JSON.stringify(data.intent)}</span>`;
+                    break;
+                case 'brain_selected':
+                    activeBrain.innerText = data.brain.toUpperCase();
+                    activeBrain.parentElement.classList.remove('opacity-40');
+                    activeBrain.parentElement.classList.add('border-[#fff000]/30');
+                    entry.innerHTML = `<span class="text-white font-black uppercase tracking-widest">[*] ROUTE_BRAIN:</span> <span class="text-[#fff000] font-black underline decoration-2 underline-offset-4 tracking-[0.2em]">${data.brain}</span>`;
+                    break;
+                case 'action_proposed':
+                    entry.innerHTML = `<span class="text-[#fff000] font-black uppercase tracking-widest">[?] PLAN_ACTION:</span><pre class="mt-4 text-[10px] text-gray-500 bg-white/[0.03] p-5 rounded-2xl border border-white/5 overflow-x-auto">${JSON.stringify(data.action, null, 2)}</pre>`;
+                    break;
+                case 'waiting_for_approval':
+                    const approvalCard = document.createElement('div');
+                    approvalCard.id = `approval-${data.cycle_id}`;
+                    approvalCard.className = "log-entry glass p-8 rounded-3xl border-2 border-yellow-500/50 bg-yellow-500/5 mt-6 mb-6 shadow-[0_0_30px_rgba(234,179,8,0.1)]";
+                    approvalCard.innerHTML = `
+                        <div class="flex items-center gap-4 mb-4">
+                            <div class="w-2 h-2 rounded-full bg-yellow-500 pulse"></div>
+                            <span class="text-yellow-500 font-black uppercase tracking-[0.2em] text-sm">Operator_Approval_Required</span>
+                        </div>
+                        <p class="text-gray-300 mb-6 font-bold">The agent is requesting to execute: <span class="accent-yellow mono text-sm">${data.action.action}</span></p>
+                        <pre class="bg-black/40 p-5 rounded-2xl text-[10px] text-gray-500 border border-white/5 mb-8 overflow-x-auto">${JSON.stringify(data.action, null, 2)}</pre>
+                        <div class="flex gap-4">
+                            <button onclick="sendApproval('${data.cycle_id}', 'approved')" class="flex-1 bg-yellow-500 hover:bg-yellow-400 text-black font-black py-4 rounded-2xl transition-all uppercase tracking-widest text-xs shadow-lg shadow-yellow-500/20">/Approve_Action</button>
+                            <button onclick="sendApproval('${data.cycle_id}', 'rejected')" class="flex-1 bg-white/5 hover:bg-red-500/20 border border-white/10 hover:border-red-500/50 text-gray-400 hover:text-red-500 font-extrabold py-4 rounded-2xl transition-all uppercase tracking-widest text-xs">/Reject</button>
+                        </div>
+                    `;
+                    logsContainer.appendChild(approvalCard);
+                    lifecycleStatus.innerText = "WAITING_ON_USER";
+                    lifecycleStatus.className = "mono text-xs text-yellow-500 font-black pulse";
+                    break;
+                case 'action_approved':
+                    const cardApp = document.getElementById(`approval-${data.cycle_id}`);
+                    if (cardApp) {
+                        cardApp.classList.remove('border-yellow-500/50', 'bg-yellow-500/5');
+                        cardApp.classList.add('border-green-500/30', 'bg-green-500/5');
+                        cardApp.innerHTML = `<div class="flex items-center gap-3 text-green-500 font-black uppercase tracking-widest text-[10px]"><span class="w-1.5 h-1.5 rounded-full bg-green-500"></span> Action_Operator_Approved</div>`;
+                        setTimeout(() => cardApp.remove(), 3000);
+                    }
+                    entry.innerHTML = `<span class="text-green-500 font-black uppercase tracking-widest">[✓] OPERATOR_OK:</span> <span class="text-green-500/70 font-bold uppercase">Proceeding with "${data.action}"</span>`;
+                    break;
+                case 'action_rejected':
+                    const cardRej = document.getElementById(`approval-${data.cycle_id}`);
+                    if (cardRej) {
+                        cardRej.classList.remove('border-yellow-500/50', 'bg-yellow-500/5');
+                        cardRej.classList.add('border-red-500/30', 'bg-red-500/5');
+                        cardRej.innerHTML = `<div class="flex items-center gap-3 text-red-500 font-black uppercase tracking-widest text-[10px]"><span class="w-1.5 h-1.5 rounded-full bg-red-500"></span> Action_Operator_Denied</div>`;
+                        setTimeout(() => cardRej.remove(), 3000);
+                    }
+                    entry.innerHTML = `<span class="text-red-500 font-black uppercase tracking-widest">[X] OPERATOR_DENY:</span> <span class="text-red-500/70 font-bold uppercase">Aborting "${data.action}"</span>`;
+                    break;
+                case 'safety_block':
+                    addSafetyAlert(data.reason);
+                    entry.innerHTML = `<span class="text-red-500 font-black uppercase tracking-widest">[!] SECURITY_REJECT:</span> <span class="text-red-400 font-bold uppercase">${data.reason}</span>`;
+                    entry.classList.add('bg-red-500/[0.05]', 'border-red-500');
+                    break;
+                case 'executing_tool':
+                    entry.innerHTML = `<span class="text-white font-black uppercase tracking-widest">[*] EXEC_TOOL:</span> <span class="text-[#fff000] font-bold underline decoration-1 underline-offset-4">${data.action}</span>`;
+                    break;
+                case 'tool_result':
+                    entry.innerHTML = `<span class="text-gray-600 font-black uppercase tracking-widest">[#] DATA_FETCH:</span><div class="mt-4 text-[10px] text-gray-400 max-h-52 overflow-y-auto bg-white/[0.01] p-5 rounded-2xl border border-white/5 scrollbar-hide whitespace-pre-wrap">${data.result}</div>`;
+                    break;
+                case 'final_response':
+                    entry.innerHTML = `<span class="text-[#fff000] font-black uppercase tracking-widest">[✓] FINAL_OUT:</span> <div class="mt-4 text-white bg-[#fff000]/[0.03] p-6 rounded-[2rem] border border-[#fff000]/20 shadow-2xl font-semibold leading-relaxed">"${data.response}"</div>`;
+                    entry.classList.add('border-[#fff000]');
+                    break;
+                case 'cycle_end':
+                    lifecycleStatus.innerText = "IDLE_STATE";
+                    lifecycleStatus.className = "mono text-xs text-gray-400 font-bold";
+                    entry.innerHTML = `<span class="text-gray-800 font-black uppercase tracking-widest"><<< CYCLE_HALT</span>`;
+                    break;
+            }
+
+            logsContainer.appendChild(entry);
+            gsap.to(entry, { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" });
+            logsContainer.scrollTop = logsContainer.scrollHeight;
+        }
+
+        function sendApproval(cycleId, status) {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                const payload = JSON.stringify({
+                    type: "approval_response",
+                    cycle_id: cycleId,
+                    status: status
+                });
+                ws.send(payload);
+                console.log(`Sent approval: ${cycleId} -> ${status}`);
+            }
+        }
+
+        function addSafetyAlert(reason) {
+            const alert = document.createElement('div');
+            alert.className = "text-[10px] p-3 bg-red-500/[0.05] border border-red-500/20 rounded-xl text-red-500 mono font-bold uppercase";
+            alert.innerText = `[!] ALERT: ${reason}`;
+            if (safetyAlerts.querySelector('p')) safetyAlerts.innerHTML = '';
+            safetyAlerts.prepend(alert);
+        }
+
+        function clearStats() {
+            activeBrain.innerText = "—";
+            activeBrain.parentElement.classList.add('opacity-40');
+            activeBrain.parentElement.classList.remove('border-[#fff000]/30');
+            safetyAlerts.innerHTML = '<p class="text-gray-700 text-[10px] font-bold uppercase tracking-widest italic">Zero Violations</p>';
+        }
+
+        function clearLogs() {
+            logsContainer.innerHTML = '<div class="text-gray-800 font-bold tracking-widest uppercase text-[10px]">Signal_Standby...</div>';
+        }
+
+        // Initialize connection
+        connect();
+        updateStats();
+    </script>
+</body>
+</html>
+    </script>
+</body>
+</html>

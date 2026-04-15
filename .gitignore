@@ -1,0 +1,39 @@
+# === Python ===
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+*.spec
+
+# === Virtual Environments ===
+venv/
+.venv/
+env/
+ENV/
+
+# === Environment & Secrets ===
+.env
+.env.*
+*.env
+
+# === IDE ===
+.vscode/
+.idea/
+*.iml
+
+# === Logs & Runtime ===
+*.log
+logs/
+*.pid
+
+# === OS ===
+.DS_Store
+Thumbs.db
+
+# === Project-specific ===
+data/
